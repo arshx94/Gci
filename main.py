@@ -1,75 +1,88 @@
 import streamlit as st
 import time
 
-st.set_page_config(page_title="GCI Rater", layout="centered")
+st.set_page_config(page_title="GCI Rater", page_icon="✨")
+st.title("GCI Rater")
 
-st.title("GCI Rating System")
+# State Management
+if "stage" not in st.session_state:
+    st.session_state.stage = 0
+if "outer_score" not in st.session_state:
+    st.session_state.outer_score = None
+if "inner_score" not in st.session_state:
+    st.session_state.inner_score = None
+if "name" not in st.session_state:
+    st.session_state.name = ""
 
-# --- Specimen Details ---
-specimen_name = st.text_input("Enter the name of the specimen (person to be rated):")
-agree = st.checkbox("I agree to fairly imagine the person and reconsider each rating carefully for unbiased results.")
-
-if not agree:
-    st.warning("Please check the box above to continue.")
-    st.stop()
-
-# --- Outer Factors ---
-st.header("Outer Factors")
-outer_factors = {
-    "Skin Tone (evenness, relative to rater's taste)": st.slider("Skin Tone", 0, 20, 10),
-    "Lower Face (lips, jaw)": st.slider("Lower Face", 0, 20, 10),
-    "Body Shape": st.slider("Body Shape", 0, 20, 10),
-    "Hair & Grooming": st.slider("Hair & Grooming", 0, 20, 10),
-    "Style & Dress Sense": st.slider("Style & Dress Sense", 0, 20, 10),
+# R level info
+r_level_names = {
+    0: "Sati Savitri",
+    1: "Virgin",
+    2: "Nibbi",
+    3: "Leony",
+    4: "Munni Badnam",
+    5: "Gangubai Tier"
 }
 
-# --- 15-second pause after outer factors ---
-st.info("Take a moment to reconsider your ratings and visualize carefully.")
-with st.spinner("Reconsidering outer factors..."):
-    time.sleep(15)
-
-# --- Inner Factors ---
-st.header("Inner Factors")
-inner_factors = {
-    "Communication": st.slider("Communication", 0, 20, 10),
-    "Humor": st.slider("Humor", 0, 20, 10),
-    "Confidence & Maturity": st.slider("Confidence & Maturity", 0, 20, 10),
-    "Social Behavior": st.slider("Social Behavior", 0, 20, 10),
-    "Attitude (down-to-earth)": st.slider("Attitude", 0, 20, 10),
+r_level_percent = {
+    0: 0.25,
+    1: 0.20,
+    2: 0.00,
+    3: -0.10,
+    4: -0.23,
+    5: -0.29
 }
 
-# --- 15-second pause after inner factors ---
-st.info("Take a moment to reconsider your inner ratings as well.")
-with st.spinner("Reconsidering inner factors..."):
-    time.sleep(15)
+# Stage 0: Enter Name and Read Instructions
+if st.session_state.stage == 0:
+    st.session_state.name = st.text_input("Enter the name of the specimen")
+    agree = st.checkbox("I agree to fairly imagine the person and reconsider the points before rating")
+    if st.button("Start") and st.session_state.name and agree:
+        st.session_state.stage = 1
+        st.experimental_rerun()
 
-# --- R-Factor ---
-st.header("R-Factor (Rawness Level)")
-r_score = st.slider("Give a raw score (0 to 5, fractional allowed)", 0.0, 5.0, 2.0, step=0.1)
+# Stage 1: Outer Rating
+elif st.session_state.stage == 1:
+    st.subheader("Outer Rating")
+    st.session_state.outer_score = st.slider("Give outer score (look, body, skin tone, features etc.)", 0, 100)
+    if st.button("Next (Reconsider Outer)"):
+        st.markdown("### Reconsider: Think again!")
+        with st.spinner("Reevaluating outer in 15 seconds..."):
+            time.sleep(15)
+        st.session_state.stage = 2
+        st.experimental_rerun()
 
-# Determine R codename and percentage change
-if r_score < 0.5:
-    r_code, change = "Sati Savitri", 0.25
-elif r_score < 1.5:
-    r_code, change = "Virgin", 0.20
-elif r_score < 2.5:
-    r_code, change = "Nibbi", 0.00
-elif r_score < 3.5:
-    r_code, change = "Leony", -0.10
-elif r_score < 4.5:
-    r_code, change = "Munni Badnam", -0.23
-else:
-    r_code, change = "Gangubai Tier", -0.29
+# Stage 2: Inner Rating
+elif st.session_state.stage == 2:
+    st.subheader("Inner Rating")
+    humor = st.slider("Humor (jokes, mimicry, facial expressions, fun)", 0, 100)
+    communication = st.slider("Communication (voice, speech, vibe, depth, clarity)", 0, 100)
+    attitude = st.slider("Attitude (humility, nature, vibe, maturity)", 0, 100)
+    inner_avg = (humor + communication + attitude) / 3
+    st.session_state.inner_score = inner_avg
+    if st.button("Next (Reconsider Inner)"):
+        st.markdown("### Reconsider: Reflect again!")
+        with st.spinner("Reevaluating inner in 15 seconds..."):
+            time.sleep(15)
+        st.session_state.stage = 3
+        st.experimental_rerun()
 
-# --- Final Calculation ---
-total_outer = sum(outer_factors.values())
-total_inner = sum(inner_factors.values())
+# Stage 3: R Level and Final Calculation
+elif st.session_state.stage == 3:
+    st.subheader("R-Level (Rawness)")
+    r_value = st.slider("Give rawness score (0 to 5, fractional allowed)", 0.0, 5.0, step=0.1)
 
-raw_score = 0.4 * total_outer + 0.6 * total_inner
-final_score = raw_score * (1 + change)
-final_score /= 10  # Normalize to a 0–10 scale
+    # Determine code name and percentage
+    r_floor = int(r_value)
+    r_level_name = r_level_names[r_floor if r_value < r_floor + 0.5 else min(r_floor + 1, 5)]
+    r_percent = r_level_percent[r_floor if r_value < r_floor + 0.5 else min(r_floor + 1, 5)]
 
-# --- Display Result ---
-st.success(f"{final_score:.2f} GCI - {r_code}")
+    if st.button("Show Final Result"):
+        outer_component = 0.4 * st.session_state.outer_score
+        inner_component = 0.6 * st.session_state.inner_score
+        raw_result = outer_component + inner_component
+        final_result = raw_result * (1 + r_percent)
+        gci_score = round(final_result / 10, 2)
 
-st.caption("This rating is a fictional metric for observation and fun only. Not to be taken seriously.")
+        st.success(f"**{gci_score} GCI {r_level_name}**")
+        st.balloons()
