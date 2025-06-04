@@ -48,7 +48,6 @@ elif st.session_state.stage == 1:
     if st.button("Next (Reconsider Outer)"):
         st.markdown("### Reconsider: Think again!")
         with st.spinner("Reevaluating outer in 15 seconds..."):
-            time.sleep(15)
         st.session_state.stage = 2
         st.experimental_rerun()
 
@@ -63,7 +62,6 @@ elif st.session_state.stage == 2:
     if st.button("Next (Reconsider Inner)"):
         st.markdown("### Reconsider: Reflect again!")
         with st.spinner("Reevaluating inner in 15 seconds..."):
-            time.sleep(15)
         st.session_state.stage = 3
         st.experimental_rerun()
 
