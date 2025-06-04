@@ -1,5 +1,4 @@
 import streamlit as st
-import time
 
 st.set_page_config(page_title="GCI Rater", page_icon="✨")
 st.title("GCI Rater")
@@ -44,33 +43,28 @@ if st.session_state.stage == 0:
 # Stage 1: Outer Rating
 elif st.session_state.stage == 1:
     st.subheader("Outer Rating")
-    st.session_state.outer_score = st.slider("Give outer score (look, body, skin tone, features etc.)", 0, 100)
-    if st.button("Next (Reconsider Outer)"):
-        st.markdown("### Reconsider: Think again!")
-        with st.spinner("Reevaluating outer in 15 seconds..."):
+    st.session_state.outer_score = st.slider("Outer score (look, body, skin tone, features etc.)", 0, 100)
+    if st.button("Next"):
         st.session_state.stage = 2
         st.experimental_rerun()
 
 # Stage 2: Inner Rating
 elif st.session_state.stage == 2:
     st.subheader("Inner Rating")
-    humor = st.slider("Humor (jokes, mimicry, facial expressions, fun)", 0, 100)
-    communication = st.slider("Communication (voice, speech, vibe, depth, clarity)", 0, 100)
-    attitude = st.slider("Attitude (humility, nature, vibe, maturity)", 0, 100)
+    humor = st.slider("Humor (jokes, mimicry, expressions, fun)", 0, 100)
+    communication = st.slider("Communication (voice, speech, vibe, clarity)", 0, 100)
+    attitude = st.slider("Attitude (humility, maturity, nature)", 0, 100)
     inner_avg = (humor + communication + attitude) / 3
     st.session_state.inner_score = inner_avg
-    if st.button("Next (Reconsider Inner)"):
-        st.markdown("### Reconsider: Reflect again!")
-        with st.spinner("Reevaluating inner in 15 seconds..."):
+    if st.button("Next"):
         st.session_state.stage = 3
         st.experimental_rerun()
 
 # Stage 3: R Level and Final Calculation
 elif st.session_state.stage == 3:
     st.subheader("R-Level (Rawness)")
-    r_value = st.slider("Give rawness score (0 to 5, fractional allowed)", 0.0, 5.0, step=0.1)
+    r_value = st.slider("Rawness score (0 to 5, fractional allowed)", 0.0, 5.0, step=0.1)
 
-    # Determine code name and percentage
     r_floor = int(r_value)
     r_level_name = r_level_names[r_floor if r_value < r_floor + 0.5 else min(r_floor + 1, 5)]
     r_percent = r_level_percent[r_floor if r_value < r_floor + 0.5 else min(r_floor + 1, 5)]
