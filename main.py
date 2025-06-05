@@ -1,80 +1,91 @@
 import streamlit as st
 
-st.set_page_config(page_title="GCI Rater", page_icon="✨")
-st.title("GCI Rater")
+st.set_page_config(page_title="GCI Rater", layout="centered")
 
-# State Management
-if "stage" not in st.session_state:
-    st.session_state.stage = 0
-if "outer_score" not in st.session_state:
-    st.session_state.outer_score = None
-if "inner_score" not in st.session_state:
-    st.session_state.inner_score = None
-if "name" not in st.session_state:
-    st.session_state.name = ""
+st.title("🔍 GCI Rater")
 
-# R level info
-r_level_names = {
-    0: "Sati Savitri",
-    1: "Virgin",
-    2: "Nibbi",
-    3: "Leony",
-    4: "Munni Badnam",
-    5: "Gangubai Tier"
+# Specimen Info
+specimen_name = st.text_input("Enter Specimen's Name")
+show_instructions = st.checkbox("Show Instructions")
+if show_instructions:
+    st.info("Imagine the person clearly and rate fairly after reconsidering for unbiased results.")
+
+st.markdown("---")
+
+# OUTER FACTORS
+st.header(" Outer Factors")
+st.caption("(Sliders show values out of 10. Internally weighted differently.)")
+
+def slider(label, max_val):
+    return st.slider(label, 0.0, 10.0, step=0.1)
+
+# Define outer subfactors (UI shows /10, backend uses custom weight)
+outer_weights = {
+    "Face": 12,
+    "Lower Face (Lips + Jaw)": 12,
+    "Body Shape": 12,
+    "Skin": 8,
+    "Posture": 8,
+    "Walking & Style": 8,
+    "Expressions in Situations": 8
 }
 
-r_level_percent = {
-    0: 0.25,
-    1: 0.20,
-    2: 0.00,
-    3: -0.10,
-    4: -0.23,
-    5: -0.29
+outer_scores = {}
+for label in outer_weights:
+    outer_scores[label] = slider(label, 10)
+
+imperfection = st.slider("Imperfection Overall (−12 to 0)", -12.0, 0.0, step=0.1)
+
+st.markdown("---")
+
+# INNER FACTORS
+st.header("Inner Factors")
+inner_weights = {
+    "Working Intelligence": 20,
+    "Social Intelligence": 20,
+    "Conversational Intelligence": 20,
+    "Femininity": 20,
+    "Nature (Caring vs Selfish)": 20
 }
 
-# Stage 0: Enter Name and Read Instructions
-if st.session_state.stage == 0:
-    st.session_state.name = st.text_input("Enter the name of the specimen")
-    agree = st.checkbox("I agree to fairly imagine the person and reconsider the points before rating")
-    if st.button("Start") and st.session_state.name and agree:
-        st.session_state.stage = 1
-        st.experimental_rerun()
+inner_scores = {}
+for label in inner_weights:
+    inner_scores[label] = slider(label, 10)
 
-# Stage 1: Outer Rating
-elif st.session_state.stage == 1:
-    st.subheader("Outer Rating")
-    st.session_state.outer_score = st.slider("Outer score (look, body, skin tone, features etc.)", 0, 100)
-    if st.button("Next"):
-        st.session_state.stage = 2
-        st.experimental_rerun()
+st.markdown("---")
 
-# Stage 2: Inner Rating
-elif st.session_state.stage == 2:
-    st.subheader("Inner Rating")
-    humor = st.slider("Humor (jokes, mimicry, expressions, fun)", 0, 100)
-    communication = st.slider("Communication (voice, speech, vibe, clarity)", 0, 100)
-    attitude = st.slider("Attitude (humility, maturity, nature)", 0, 100)
-    inner_avg = (humor + communication + attitude) / 3
-    st.session_state.inner_score = inner_avg
-    if st.button("Next"):
-        st.session_state.stage = 3
-        st.experimental_rerun()
+# R-FACTOR
+st.header("R-Factor")
+r_value = st.slider("Rate from 0 (Pure) to 5 (Extremely Exposed)", 0.0, 5.0, step=0.1)
 
-# Stage 3: R Level and Final Calculation
-elif st.session_state.stage == 3:
-    st.subheader("R-Level (Rawness)")
-    r_value = st.slider("Rawness score (0 to 5, fractional allowed)", 0.0, 5.0, step=0.1)
+# R-level mapping and effect
+r_levels = [
+    (0.0, 0.99, "SatiSavitri", +0.20),
+    (1.0, 1.99, "Virgin", +0.20),
+    (2.0, 2.49, "CucumberExp", +0.04),
+    (2.5, 3.49, "Leony tier", -0.17),
+    (3.5, 4.49, "CertifiedSlut", -0.24),
+    (4.5, 5.0, "Gangubai tier", -0.30),
+]
 
-    r_floor = int(r_value)
-    r_level_name = r_level_names[r_floor if r_value < r_floor + 0.5 else min(r_floor + 1, 5)]
-    r_percent = r_level_percent[r_floor if r_value < r_floor + 0.5 else min(r_floor + 1, 5)]
+r_code, r_modifier = None, 0
+for low, high, code, mod in r_levels:
+    if low <= r_value <= high:
+        r_code, r_modifier = code, mod
+        break
 
-    if st.button("Show Final Result"):
-        outer_component = 0.4 * st.session_state.outer_score
-        inner_component = 0.6 * st.session_state.inner_score
-        raw_result = outer_component + inner_component
-        final_result = raw_result * (1 + r_percent)
-        gci_score = round(final_result / 10, 2)
+# CALCULATIONS
+outer_total = sum((outer_scores[key] / 10) * outer_weights[key] for key in outer_weights)
+outer_total += imperfection  # Deduct imperfection
+outer_total = max(0, outer_total)  # Prevent negative outer score
 
-        st.success(f"**{gci_score} GCI {r_level_name}**")
-        st.balloons()
+inner_total = sum((inner_scores[key] / 10) * inner_weights[key] for key in inner_weights)
+
+final_raw = 0.4 * outer_total + 0.6 * inner_total
+final_modified = final_raw * (1 + r_modifier)
+final_display = round(final_modified / 10, 2)  # Final GCI out of 10
+
+if specimen_name:
+    st.markdown("---")
+    st.subheader("📊 Final GCI Rating")
+    st.success(f"**{final_display} GCI {r_code}** for {specimen_name}")
